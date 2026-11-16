@@ -1,2 +1,2 @@
 # Treasure of the Dragon King: test build
-Play: https://lukewchaney.github.io/dragon-king-play/ (the market, first fight: add `?room=market`; plain knight test room: `?room=knight`). Click the game to look around.
+Play: https://lukewchaney.github.io/dragon-king-play/ (the market, first fight: add `?room=market`; plain knight test room: `?room=knight`; town test with doors + NPC talk/trade: `?room=town`; maps: `?room=map&name=test_dungeon`; generated places: `?room=gen&type=outpost|town|city&seed=7`; time of day: `&time=evening`). Map maker: https://lukewchaney.github.io/dragon-king-play/editor.html . Click the game to look around.

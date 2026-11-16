@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dragon King Map Maker</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a tool bench. Left: map settings + legend palette; centre: the painted grid; below: the map text, copy / play. */
+:root {
+  --bg: #f3ece0;        /* sun-bleached parchment */
+  --panel: #fbf6ee;
+  --ink: #2b2118;       /* lamp-black ink */
+  --muted: #7a6a58;
+  --line: #d8c9b2;
+  --gold: #b07a1c;      /* the game's brass, darkened for light ground */
+  --gold-ink: #fff8e8;
+  --void: #1a1410;
+  --danger: #a8322a;
+  --f-display: "Press Start 2P", "Courier New", monospace;
+  --f-body: "IBM Plex Sans", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #17110c; --panel: #211910; --ink: #f1e6d2; --muted: #a8977e; --line: #3d2f20; --gold: #e2ac3e; --gold-ink: #1b1209;
+  --void: #050403; --danger: #e0695e; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #17110c; --panel: #211910; --ink: #f1e6d2; --muted: #a8977e; --line: #3d2f20; --gold: #e2ac3e; --gold-ink: #1b1209;
+  --void: #050403; --danger: #e0695e; color-scheme: dark }
+* { box-sizing: border-box }
+body { background: var(--bg); color: var(--ink); font: 14px/1.5 var(--f-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 20px 40px }
+h1 { font: 16px/1.4 var(--f-display); margin: 0; letter-spacing: .02em; color: var(--gold); text-wrap: balance }
+.sub { color: var(--muted); max-width: 70ch; margin: 6px 0 0 }
+header { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: end; justify-content: space-between; margin-bottom: 18px }
+.bench { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 18px; align-items: start }
+@media (max-width: 820px) { .bench { grid-template-columns: minmax(0, 1fr) } }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 14px }
+.panel h2 { font: 600 11px/1 var(--f-body); text-transform: uppercase; letter-spacing: .12em; color: var(--muted); margin: 0 0 10px }
+.stack { display: flex; flex-direction: column; gap: 14px }
+.fields { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 10px }
+.fields label { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--muted); min-width: 0 }
+.fields .wide { grid-column: 1 / -1 }
+input, select, textarea { font: 13px var(--f-body); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 5px 7px; min-width: 0; width: 100% }
+textarea { font: 12px/1.35 var(--f-mono); resize: vertical; white-space: pre; overflow: auto }
+input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px }
+.tools { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px }
+.tool { display: flex; align-items: center; gap: 8px; padding: 5px 7px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg);
+  cursor: pointer; font-size: 12px; color: var(--ink); text-align: left; min-width: 0 }
+.tool[aria-pressed="true"] { border-color: var(--gold); box-shadow: inset 0 0 0 1px var(--gold) }
+.sw { width: 18px; height: 18px; border-radius: 3px; flex: none; display: grid; place-items: center; font: 500 11px var(--f-mono); color: #fff; text-shadow: 0 1px 1px #0008 }
+.tool span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.gridwrap { overflow: auto; border: 1px solid var(--line); border-radius: 6px; background: var(--void); max-height: 72vh }
+canvas { display: block; touch-action: none; cursor: crosshair }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center }
+button.btn { font: 600 13px var(--f-body); padding: 7px 12px; border-radius: 4px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); cursor: pointer }
+button.btn.primary, a.btn.primary { background: var(--gold); color: var(--gold-ink); border-color: var(--gold) }
+a.btn { font: 600 13px var(--f-body); padding: 7px 12px; border-radius: 4px; text-decoration: none; display: inline-block }
+.size { display: flex; gap: 6px; align-items: center; font-size: 12px; color: var(--muted) }
+.size input { width: 64px }
+.status { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums }
+.warn { color: var(--danger) }
+.note { font-size: 12px; color: var(--muted); max-width: 70ch }
+.cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px }
+@media (max-width: 900px) { .cols { grid-template-columns: minmax(0, 1fr) } }
+code { font: 12px var(--f-mono) }
+</style>
+
+<header>
+  <div>
+    <h1>DRAGON KING MAP MAKER</h1>
+    <p class="sub">Paint a dungeon or an outdoor area square by square (one square = 2 metres in game), then play it in the browser build or copy the text into <code>game/data/maps/&lt;name&gt;.txt</code>.</p>
+  </div>
+  <div class="row">
+    <button class="btn" id="btn-new-dungeon" type="button">New dungeon</button>
+    <button class="btn" id="btn-new-area" type="button">New area</button>
+    <button class="btn" id="btn-sample" type="button">Load example</button>
+  </div>
+</header>
+
+<div class="bench">
+  <div class="stack">
+    <section class="panel">
+      <h2>Map</h2>
+      <div class="fields">
+        <label class="wide">Name<input id="f-name" value="Test Dungeon"></label>
+        <label>Type<select id="f-type"><option value="dungeon">Dungeon (roof)</option><option value="area">Area (open sky)</option></select></label>
+        <label>Ground<select id="f-ground"></select></label>
+        <label>Walls<select id="f-wall"></select></label>
+        <label>Ceiling<select id="f-ceiling"></select></label>
+        <label>Outdoor ground<select id="f-outdoor"></select></label>
+        <label>Building front (H)<select id="f-H"></select></label>
+        <label>Exit X goes to<input id="f-X" placeholder="map name"></label>
+        <label>Stairs ^ go to<input id="f-up" placeholder="map name"></label>
+      </div>
+    </section>
+    <section class="panel">
+      <h2>NPCs for markers 1-9</h2>
+      <div class="fields" id="npc-fields"></div>
+      <p class="note">Ids from <code>game/data/npcs.json</code>. Leave a slot empty if you do not use that number.</p>
+    </section>
+    <section class="panel">
+      <h2>Paint</h2>
+      <div class="tools" id="tools" role="toolbar" aria-label="Paint tools"></div>
+      <p class="note">Click or drag to paint. Right-click (or the Floor tool) clears a square. Only one Start: painting a new one moves it.</p>
+    </section>
+  </div>
+
+  <div class="stack">
+    <section class="panel">
+      <div class="row" style="justify-content: space-between">
+        <div class="size">
+          <label for="f-w">Width</label><input id="f-w" type="number" min="5" max="120" value="19">
+          <label for="f-h">Height</label><input id="f-h" type="number" min="5" max="120" value="15">
+          <button class="btn" id="btn-resize" type="button">Resize</button>
+          <button class="btn" id="btn-border" type="button">Wall the edges</button>
+        </div>
+        <div class="row">
+          <label class="size" for="f-zoom">Zoom</label><input id="f-zoom" type="range" min="12" max="40" value="26" style="width: 110px">
+        </div>
+      </div>
+    </section>
+    <div class="gridwrap"><canvas id="cv" aria-label="Map grid"></canvas></div>
+    <div class="row" style="justify-content: space-between">
+      <span class="status" id="status"></span>
+      <div class="row">
+        <a class="btn primary" id="play" href="#" target="_blank" rel="noopener">Play in game</a>
+      </div>
+    </div>
+    <div class="cols">
+      <section class="panel">
+        <h2>Map text</h2>
+        <textarea id="out" rows="16" spellcheck="false" aria-label="Map text"></textarea>
+        <div class="row" style="margin-top: 8px">
+          <button class="btn primary" id="btn-copy" type="button">Copy text</button>
+          <button class="btn" id="btn-download" type="button">Download .txt</button>
+          <button class="btn" id="btn-load" type="button">Load from text</button>
+          <span class="status" id="copy-status"></span>
+        </div>
+        <p class="note">To change the map by hand or load one you saved, edit or paste the text above and press Load from text.</p>
+      </section>
+      <section class="panel">
+        <h2>Legend</h2>
+        <div id="legend" class="note"></div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<script>
+const GAME = "https://lukewchaney.github.io/dragon-king-play/";
+const GROUND = ["flagstone", "sand", "dirt_road", "cobblestone", "dry_mud", "floorboards", "rug", "straw"];
+const WALLS = ["sandstone_blocks", "mud_brick", "clay_plaster", "whitewash", "timber_planks", "stone_foundation", "wood_beams", "roof_tiles"];
+const FRONTS = ["house_small", "house_large", "tavern", "general_store", "alchemist", "blacksmith", "temple", "gate"];
+const NPCS = ["", "barkeep", "patron", "merchant", "townsperson", "guard", "market_porter", "market_woman", "market_catfolk", "market_oldman"];
+// char, label, colour
+const TOOLS = [
+  ["#", "Wall", "#8a6a44"], [".", "Floor", "#3a3027"], [",", "Outdoor ground", "#b9945a"], [" ", "Nothing (solid)", "#050403"],
+  ["D", "Door", "#a0602a"], ["+", "Locked door", "#5a2a14"], ["S", "Start (faces north)", "#2f9e5b"], ["E", "Club man (enemy)", "#c43a2c"],
+  ["C", "Chest", "#d8a23a"], ["B", "Barrel", "#7c4e24"], ["T", "Table", "#9a7348"], ["L", "Lamp (light)", "#f4c95d"],
+  ["W", "Water", "#2f6f9a"], ["X", "Exit to map", "#e2ac3e"], ["^", "Stairs", "#8a8a9a"], ["H", "Building front", "#c87f4a"],
+  ["1", "NPC 1", "#6b5bb8"], ["2", "NPC 2", "#6b5bb8"], ["3", "NPC 3", "#6b5bb8"], ["4", "NPC 4", "#6b5bb8"],
+  ["5", "NPC 5", "#6b5bb8"], ["6", "NPC 6", "#6b5bb8"], ["7", "NPC 7", "#6b5bb8"], ["8", "NPC 8", "#6b5bb8"], ["9", "NPC 9", "#6b5bb8"],
+];
+const COL = Object.fromEntries(TOOLS.map(t => [t[0], t[2]]));
+const SAMPLE = `name: Test Dungeon
+type: dungeon
+ground: flagstone
+wall: sandstone_blocks
+ceiling: wood_beams
+N1: patron
+X: test_area
+---
+###################
+#.....#.....#..L..#
+#.S...D..E..#.....#
+#.....#.....D..C..#
+#..L..#.....#.....#
+###D###########+###
+#.....#...........#
+#..B..#....E......#
+#.....D...........#
+#..1..#..T....E...#
+#.....#...........#
+###########D#######
+          #.#
+          #X#
+          ###`;
+
+const $ = id => document.getElementById(id);
+let grid = [], W = 19, H = 15, tool = "#", painting = null;
+
+function fillSelect(id, list, val) {
+  const s = $(id); s.innerHTML = list.map(v => `<option>${v}</option>`).join(""); if (val) s.value = val;
+}
+fillSelect("f-ground", GROUND, "flagstone"); fillSelect("f-wall", WALLS, "sandstone_blocks");
+fillSelect("f-ceiling", ["wood_beams", "sandstone_blocks", "timber_planks", "stone_foundation"], "wood_beams");
+fillSelect("f-outdoor", GROUND, "sand"); fillSelect("f-H", FRONTS, "house_small");
+$("npc-fields").innerHTML = Array.from({length: 9}, (_, i) =>
+  `<label>NPC ${i + 1}<select id="f-N${i + 1}">${NPCS.map(n => `<option value="${n}">${n || "(none)"}</option>`).join("")}</select></label>`).join("");
+
+$("tools").innerHTML = TOOLS.map(([c, l, col]) =>
+  `<button class="tool" type="button" data-c="${c === " " ? "space" : c}" aria-pressed="${c === tool}"><span class="sw" style="background:${col}">${c === " " ? "" : c}</span><span>${l}</span></button>`).join("");
+$("tools").addEventListener("click", e => {
+  const b = e.target.closest(".tool"); if (!b) return;
+  tool = b.dataset.c === "space" ? " " : b.dataset.c;
+  document.querySelectorAll(".tool").forEach(t => t.setAttribute("aria-pressed", t === b));
+});
+$("legend").innerHTML = TOOLS.filter(t => !"23456789".includes(t[0])).map(([c, l]) =>
+  `<div><code>${c === " " ? "space" : c}</code> ${l}${c === "1" ? " (1 to 9, set in NPCs)" : ""}</div>`).join("");
+
+function blank(w, h, fill) { return Array.from({length: h}, () => Array(w).fill(fill)); }
+function newMap(type) {
+  W = +$("f-w").value || 19; H = +$("f-h").value || 15;
+  grid = blank(W, H, type === "area" ? "," : ".");
+  wallEdges(); grid[H - 2][Math.floor(W / 2)] = "S";
+  $("f-type").value = type; $("f-name").value = type === "area" ? "New Area" : "New Dungeon"; render(); update();
+}
+function wallEdges() { for (let x = 0; x < W; x++) { grid[0][x] = "#"; grid[H - 1][x] = "#"; } for (let y = 0; y < H; y++) { grid[y][0] = "#"; grid[y][W - 1] = "#"; } }
+
+function parse(text) {
+  const lines = text.replace(/\r/g, "").split("\n"); const hd = {}; const rows = []; let inGrid = false;
+  for (const ln of lines) {
+    if (!inGrid) { if (ln.trim() === "---") { inGrid = true; continue; } const i = ln.indexOf(":"); if (i > 0) hd[ln.slice(0, i).trim()] = ln.slice(i + 1).trim(); }
+    else rows.push(ln);
+  }
+  while (rows.length && !rows[rows.length - 1].trim()) rows.pop();
+  return {hd, rows};
+}
+function loadText(text) {
+  const {hd, rows} = parse(text);
+  if (!rows.length) { setStatus("No map grid found: the text needs a line with --- and the rows under it.", true); return; }
+  H = rows.length; W = Math.max(...rows.map(r => r.length));
+  grid = rows.map(r => Array.from({length: W}, (_, x) => r[x] ?? " "));
+  $("f-w").value = W; $("f-h").value = H;
+  $("f-name").value = hd.name || "Untitled"; $("f-type").value = hd.type === "area" ? "area" : "dungeon";
+  for (const [k, id] of [["ground", "f-ground"], ["wall", "f-wall"], ["ceiling", "f-ceiling"], ["outdoor", "f-outdoor"], ["H", "f-H"]]) if (hd[k]) $(id).value = hd[k];
+  $("f-X").value = hd.X || ""; $("f-up").value = hd["^"] || "";
+  for (let i = 1; i <= 9; i++) $("f-N" + i).value = hd["N" + i] || "";
+  render(); update();
+}
+function toText() {
+  const hd = [`name: ${$("f-name").value}`, `type: ${$("f-type").value}`, `ground: ${$("f-ground").value}`, `wall: ${$("f-wall").value}`];
+  if ($("f-type").value === "dungeon") hd.push(`ceiling: ${$("f-ceiling").value}`);
+  if (grid.some(r => r.includes(","))) hd.push(`outdoor: ${$("f-outdoor").value}`);
+  if (grid.some(r => r.includes("H"))) hd.push(`H: ${$("f-H").value}`);
+  for (let i = 1; i <= 9; i++) { const v = $("f-N" + i).value; if (v) hd.push(`N${i}: ${v}`); }
+  if ($("f-X").value) hd.push(`X: ${$("f-X").value}`);
+  if ($("f-up").value) hd.push(`^: ${$("f-up").value}`);
+  return hd.join("\n") + "\n---\n" + grid.map(r => r.join("").replace(/\s+$/, "")).join("\n") + "\n";
+}
+
+const cv = $("cv"), ctx = cv.getContext("2d");
+function cell() { return +$("f-zoom").value; }
+function render() {
+  const c = cell(); cv.width = W * c; cv.height = H * c;
+  ctx.font = `600 ${Math.round(c * 0.55)}px "IBM Plex Mono", monospace`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const ch = grid[y][x]; ctx.fillStyle = COL[ch] || "#3a3027"; ctx.fillRect(x * c, y * c, c, c);
+    if (!"#., ".includes(ch)) { ctx.fillStyle = "#fff"; ctx.fillText(ch, x * c + c / 2, y * c + c / 2 + 1); }
+    ctx.strokeStyle = "rgba(255,255,255,0.07)"; ctx.strokeRect(x * c + 0.5, y * c + 0.5, c - 1, c - 1);
+  }
+}
+function paintAt(ev) {
+  const r = cv.getBoundingClientRect(), c = cell();
+  const x = Math.floor((ev.clientX - r.left) / c), y = Math.floor((ev.clientY - r.top) / c);
+  if (x < 0 || y < 0 || x >= W || y >= H) return;
+  const t = painting === "erase" ? ($("f-type").value === "area" ? "," : ".") : tool;
+  if (t === "S") for (const row of grid) for (let i = 0; i < row.length; i++) if (row[i] === "S") row[i] = ".";
+  if (grid[y][x] !== t) { grid[y][x] = t; render(); update(); }
+}
+cv.addEventListener("pointerdown", e => { painting = e.button === 2 ? "erase" : "paint"; cv.setPointerCapture(e.pointerId); paintAt(e); });
+cv.addEventListener("pointermove", e => { if (painting) paintAt(e); });
+cv.addEventListener("pointerup", () => painting = null);
+cv.addEventListener("contextmenu", e => e.preventDefault());
+$("f-zoom").addEventListener("input", render);
+
+function setStatus(t, bad) { $("status").textContent = t; $("status").classList.toggle("warn", !!bad); }
+function check() {
+  const flat = grid.flat(); const issues = [];
+  const starts = flat.filter(c => c === "S").length;
+  if (starts === 0) issues.push("No Start (S): the hero would appear in the middle.");
+  if (flat.includes("X") && !$("f-X").value) issues.push("An exit X has no target map.");
+  if (flat.includes("^") && !$("f-up").value) issues.push("Stairs ^ have no target map.");
+  for (let i = 1; i <= 9; i++) if (flat.includes(String(i)) && !$("f-N" + i).value) issues.push(`NPC ${i} is on the map but has no NPC chosen.`);
+  const enemies = flat.filter(c => c === "E").length;
+  setStatus(issues.length ? issues.join(" ") : `${W} x ${H} squares (${W * 2} x ${H * 2} m), ${enemies} enem${enemies === 1 ? "y" : "ies"}, ready to play.`, issues.length > 0);
+}
+let linkTimer = 0;
+function update() {
+  $("out").value = toText(); check();
+  clearTimeout(linkTimer); linkTimer = setTimeout(makeLink, 150);
+}
+async function makeLink() {
+  const text = toText(); let data;
+  try {
+    const cs = new CompressionStream("gzip"); const w = cs.writable.getWriter(); w.write(new TextEncoder().encode(text)); w.close();
+    const buf = new Uint8Array(await new Response(cs.readable).arrayBuffer());
+    let s = ""; for (const b of buf) s += String.fromCharCode(b); data = btoa(s);
+  } catch (e) {
+    data = btoa(unescape(encodeURIComponent(text)));
+  }
+  data = data.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  $("play").href = `${GAME}?room=map&data=${data}`;
+}
+for (const id of ["f-name", "f-type", "f-ground", "f-wall", "f-ceiling", "f-outdoor", "f-H", "f-X", "f-up", ...Array.from({length: 9}, (_, i) => "f-N" + (i + 1))])
+  $(id).addEventListener("input", update);
+$("btn-resize").addEventListener("click", () => {
+  const nw = Math.max(5, Math.min(120, +$("f-w").value || W)), nh = Math.max(5, Math.min(120, +$("f-h").value || H));
+  const fill = $("f-type").value === "area" ? "," : ".";
+  grid = Array.from({length: nh}, (_, y) => Array.from({length: nw}, (_, x) => (grid[y] && grid[y][x] !== undefined) ? grid[y][x] : fill));
+  W = nw; H = nh; render(); update();
+});
+$("btn-border").addEventListener("click", () => { wallEdges(); render(); update(); });
+$("btn-new-dungeon").addEventListener("click", () => newMap("dungeon"));
+$("btn-new-area").addEventListener("click", () => newMap("area"));
+$("btn-sample").addEventListener("click", () => loadText(SAMPLE));
+$("btn-load").addEventListener("click", () => loadText($("out").value));
+$("btn-copy").addEventListener("click", () => {
+  const ta = $("out");
+  navigator.clipboard.writeText(ta.value).then(() => $("copy-status").textContent = "Copied.")
+    .catch(() => { ta.focus(); ta.select(); $("copy-status").textContent = "Selected: press Ctrl+C to copy."; });
+});
+$("btn-download").addEventListener("click", () => {
+  const name = ($("f-name").value || "map").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "") || "map";
+  try {
+    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([toText()], {type: "text/plain"}));
+    a.download = name + ".txt"; document.body.appendChild(a); a.click(); a.remove();
+    $("copy-status").textContent = `Saving ${name}.txt (if nothing downloads here, use Copy text).`;
+  } catch (e) { $("copy-status").textContent = "Downloads are blocked here: use Copy text."; }
+});
+loadText(SAMPLE);
+</script>
+
+</html>
