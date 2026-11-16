@@ -91,6 +91,8 @@ code { font: 12px var(--f-mono) }
         <label>Building front (H)<select id="f-H"></select></label>
         <label>Exit X goes to<input id="f-X" placeholder="map name"></label>
         <label>Stairs ^ go to<input id="f-up" placeholder="map name"></label>
+        <label>Darkness<select id="f-dark"><option value="">Ordinary (dim at worst)</option><option value="magic">Whole map: magical darkness</option></select></label>
+        <label>Enemies<select id="f-aware"><option value="no">Unaware (must see you)</option><option value="yes">Aware (come at once)</option></select></label>
       </div>
     </section>
     <section class="panel">
@@ -156,7 +158,7 @@ const NPCS = ["", "barkeep", "patron", "merchant", "townsperson", "guard", "mark
 const TOOLS = [
   ["#", "Wall", "#8a6a44"], [".", "Floor", "#3a3027"], [",", "Outdoor ground", "#b9945a"], [" ", "Nothing (solid)", "#050403"],
   ["D", "Door", "#a0602a"], ["+", "Locked door", "#5a2a14"], ["S", "Start (faces north)", "#2f9e5b"], ["E", "Club man (enemy)", "#c43a2c"],
-  ["C", "Chest", "#d8a23a"], ["B", "Barrel", "#7c4e24"], ["T", "Table", "#9a7348"], ["L", "Lamp (light)", "#f4c95d"],
+  ["C", "Chest", "#d8a23a"], ["B", "Barrel", "#7c4e24"], ["T", "Table", "#9a7348"], ["L", "Lamp (lit)", "#f4c95d"], ["l", "Lamp (unlit)", "#7a6630"], ["M", "Magical darkness", "#000000"],
   ["W", "Water", "#2f6f9a"], ["X", "Exit to map", "#e2ac3e"], ["^", "Stairs", "#8a8a9a"], ["H", "Building front", "#c87f4a"],
   ["1", "NPC 1", "#6b5bb8"], ["2", "NPC 2", "#6b5bb8"], ["3", "NPC 3", "#6b5bb8"], ["4", "NPC 4", "#6b5bb8"],
   ["5", "NPC 5", "#6b5bb8"], ["6", "NPC 6", "#6b5bb8"], ["7", "NPC 7", "#6b5bb8"], ["8", "NPC 8", "#6b5bb8"], ["9", "NPC 9", "#6b5bb8"],
@@ -235,6 +237,7 @@ function loadText(text) {
   $("f-name").value = hd.name || "Untitled"; $("f-type").value = hd.type === "area" ? "area" : "dungeon";
   for (const [k, id] of [["ground", "f-ground"], ["wall", "f-wall"], ["ceiling", "f-ceiling"], ["outdoor", "f-outdoor"], ["H", "f-H"]]) if (hd[k]) $(id).value = hd[k];
   $("f-X").value = hd.X || ""; $("f-up").value = hd["^"] || "";
+  $("f-dark").value = hd.darkness === "magic" ? "magic" : ""; $("f-aware").value = hd.aware === "yes" ? "yes" : "no";
   for (let i = 1; i <= 9; i++) $("f-N" + i).value = hd["N" + i] || "";
   render(); update();
 }
@@ -246,6 +249,8 @@ function toText() {
   for (let i = 1; i <= 9; i++) { const v = $("f-N" + i).value; if (v) hd.push(`N${i}: ${v}`); }
   if ($("f-X").value) hd.push(`X: ${$("f-X").value}`);
   if ($("f-up").value) hd.push(`^: ${$("f-up").value}`);
+  if ($("f-dark").value) hd.push(`darkness: ${$("f-dark").value}`);
+  if ($("f-aware").value === "yes") hd.push(`aware: yes`);
   return hd.join("\n") + "\n---\n" + grid.map(r => r.join("").replace(/\s+$/, "")).join("\n") + "\n";
 }
 
