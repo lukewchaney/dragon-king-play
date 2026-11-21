@@ -65,45 +65,99 @@ a.btn { font: 600 13px var(--f-body); padding: 7px 12px; border-radius: 4px; tex
 code { font: 12px var(--f-mono) }
 </style>
 
+<style>
+/* night run 11: modes, grouped palette, shapes, plan summary */
+.modes { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: var(--panel) }
+.modes button { font: 600 13px var(--f-body); padding: 7px 12px; border: 0; border-right: 1px solid var(--line); background: transparent; color: var(--ink); cursor: pointer }
+.modes button:last-child { border-right: 0 }
+.modes button[aria-pressed="true"] { background: var(--gold); color: var(--gold-ink) }
+.group-h { grid-column: 1 / -1; font: 600 10px/1 var(--f-body); text-transform: uppercase; letter-spacing: .12em; color: var(--muted); margin: 6px 0 0 }
+.group-h:first-child { margin-top: 0 }
+.shapes { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px }
+.shapes button { font: 500 12px var(--f-body); padding: 4px 9px; border-radius: 4px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); cursor: pointer }
+.shapes button[aria-pressed="true"] { border-color: var(--gold); box-shadow: inset 0 0 0 1px var(--gold) }
+[data-modes]:not(.show) { display: none !important }
+.plan { font-size: 12px; font-variant-numeric: tabular-nums }
+.plan table { border-collapse: collapse; width: 100% }
+.plan td { padding: 2px 0; border-bottom: 1px solid var(--line) }
+.plan td:last-child { text-align: right }
+.plan .warn { margin-top: 8px }
+.plan .ok { color: var(--muted); margin-top: 8px }
+.bench > .stack, .stack > * { min-width: 0 }
+.size { flex-wrap: wrap }
+header .stack { max-width: 100% }
+.modes { flex-wrap: wrap }
+</style>
+
 <header>
   <div>
     <h1>DRAGON KING MAP MAKER</h1>
-    <p class="sub">Paint a dungeon or an outdoor area square by square (one square = 2 metres in game), then play it in the browser build or copy the text into <code>game/data/maps/&lt;name&gt;.txt</code>.</p>
+    <p class="sub" id="sub"></p>
   </div>
-  <div class="row">
-    <button class="btn" id="btn-new-dungeon" type="button">New dungeon</button>
-    <button class="btn" id="btn-new-area" type="button">New area</button>
-    <button class="btn" id="btn-sample" type="button">Load example</button>
+  <div class="stack" style="gap: 8px; align-items: end">
+    <div class="modes" role="group" aria-label="Mode">
+      <button type="button" data-mode="map">Dungeon / area</button>
+      <button type="button" data-mode="settlement">Settlement planner</button>
+      <button type="button" data-mode="base">Base planner</button>
+    </div>
+    <div class="row">
+      <button class="btn" id="btn-new-dungeon" type="button" data-modes="map">New dungeon</button>
+      <button class="btn" id="btn-new-area" type="button" data-modes="map">New area</button>
+      <button class="btn" id="btn-new-settlement" type="button" data-modes="settlement">New settlement</button>
+      <button class="btn" id="btn-new-base" type="button" data-modes="base">New base</button>
+      <button class="btn" id="btn-sample" type="button">Load example</button>
+    </div>
   </div>
 </header>
 
 <div class="bench">
   <div class="stack">
     <section class="panel">
+      <h2>Paint</h2>
+      <div class="shapes" role="group" aria-label="Shape">
+        <button type="button" data-shape="brush">Brush</button>
+        <button type="button" data-shape="rect">Rectangle</button>
+        <button type="button" data-shape="outline">Outline</button>
+        <button type="button" data-shape="fill">Fill</button>
+        <button type="button" id="btn-undo">Undo</button>
+      </div>
+      <div class="tools" id="tools" role="toolbar" aria-label="Paint tools"></div>
+      <p class="note">Click or drag to paint. Rectangle and Outline: drag from corner to corner (Outline is good for walls). Fill: paints every touching square of the same kind. Right-click clears. Ctrl+Z undoes. Only one Start.</p>
+    </section>
+    <section class="panel">
       <h2>Map</h2>
       <div class="fields">
         <label class="wide">Name<input id="f-name" value="Test Dungeon"></label>
         <label>Type<select id="f-type"><option value="dungeon">Dungeon (roof)</option><option value="area">Area (open sky)</option></select></label>
-        <label>Ground<select id="f-ground"></select></label>
-        <label>Walls<select id="f-wall"></select></label>
-        <label>Ceiling<select id="f-ceiling"></select></label>
-        <label>Outdoor ground<select id="f-outdoor"></select></label>
-        <label>Building front (H)<select id="f-H"></select></label>
+        <label>Ground (.)<select id="f-ground"></select></label>
+        <label>Walls (#)<select id="f-wall"></select></label>
+        <label data-modes="map">Ceiling<select id="f-ceiling"></select></label>
+        <label>Outdoor ground (,)<select id="f-outdoor"></select></label>
+        <label data-modes="map">Building front (H)<select id="f-H"></select></label>
+        <label data-modes="settlement">Size<select id="f-settlement"><option>outpost</option><option>village</option><option selected>town</option><option>city</option></select></label>
+        <label data-modes="base">Kind of base<select id="f-base"><option value="camp">Camp (tents)</option><option value="fort">Fort (walls)</option><option value="hideout">Hideout</option><option value="hall">Faction hall</option></select></label>
+        <label data-modes="settlement base">Faction<select id="f-faction"></select></label>
+        <label data-modes="base">Attitude<select id="f-camp"><option value="friendly">Friendly camp</option><option value="neutral">Neutral camp</option><option value="hostile" selected>Hostile camp</option></select></label>
+        <label data-modes="settlement base">Road (=)<select id="f-road"></select></label>
+        <label data-modes="settlement base">Plaza (:)<select id="f-plaza"></select></label>
+        <label data-modes="settlement base">City wall (%)<select id="f-citywall"></select></label>
+        <label data-modes="settlement base">City wall height (m)<input id="f-citywall_h" type="number" min="3" max="20" step="0.5" value="7"></label>
+        <label data-modes="settlement base">Palisade (|)<select id="f-palisade"></select></label>
         <label>Exit X goes to<input id="f-X" placeholder="map name"></label>
         <label>Stairs ^ go to<input id="f-up" placeholder="map name"></label>
-        <label>Darkness<select id="f-dark"><option value="">Ordinary (dim at worst)</option><option value="magic">Whole map: magical darkness</option></select></label>
+        <label data-modes="map">Darkness<select id="f-dark"><option value="">Ordinary (dim at worst)</option><option value="magic">Whole map: magical darkness</option></select></label>
         <label>Enemies<select id="f-aware"><option value="no">Unaware (must see you)</option><option value="yes">Aware (come at once)</option></select></label>
       </div>
+    </section>
+    <section class="panel" data-modes="settlement base">
+      <h2>Building pictures</h2>
+      <div class="fields" id="front-fields"></div>
+      <p class="note">Each building letter uses one front picture. A block of the same letter is one building; its picture goes on the side facing the most road or plaza (the gold edge on the grid).</p>
     </section>
     <section class="panel">
       <h2>NPCs for markers 1-9</h2>
       <div class="fields" id="npc-fields"></div>
       <p class="note">Ids from <code>game/data/npcs.json</code>. Leave a slot empty if you do not use that number.</p>
-    </section>
-    <section class="panel">
-      <h2>Paint</h2>
-      <div class="tools" id="tools" role="toolbar" aria-label="Paint tools"></div>
-      <p class="note">Click or drag to paint. Right-click (or the Floor tool) clears a square. Only one Start: painting a new one moves it.</p>
     </section>
   </div>
 
@@ -111,13 +165,13 @@ code { font: 12px var(--f-mono) }
     <section class="panel">
       <div class="row" style="justify-content: space-between">
         <div class="size">
-          <label for="f-w">Width</label><input id="f-w" type="number" min="5" max="120" value="19">
-          <label for="f-h">Height</label><input id="f-h" type="number" min="5" max="120" value="15">
+          <label for="f-w">Width</label><input id="f-w" type="number" min="5" max="160" value="19">
+          <label for="f-h">Height</label><input id="f-h" type="number" min="5" max="160" value="15">
           <button class="btn" id="btn-resize" type="button">Resize</button>
           <button class="btn" id="btn-border" type="button">Wall the edges</button>
         </div>
         <div class="row">
-          <label class="size" for="f-zoom">Zoom</label><input id="f-zoom" type="range" min="12" max="40" value="26" style="width: 110px">
+          <label class="size" for="f-zoom">Zoom</label><input id="f-zoom" type="range" min="8" max="40" value="26" style="width: 110px">
         </div>
       </div>
     </section>
@@ -128,6 +182,10 @@ code { font: 12px var(--f-mono) }
         <a class="btn primary" id="play" href="#" target="_blank" rel="noopener">Play in game</a>
       </div>
     </div>
+    <section class="panel" data-modes="settlement base">
+      <h2>Plan</h2>
+      <div class="plan" id="plan"></div>
+    </section>
     <div class="cols">
       <section class="panel">
         <h2>Map text</h2>
@@ -151,20 +209,50 @@ code { font: 12px var(--f-mono) }
 <script>
 const GAME = "https://lukewchaney.github.io/dragon-king-play/";
 const GROUND = ["flagstone", "sand", "dirt_road", "cobblestone", "dry_mud", "floorboards", "rug", "straw"];
-const WALLS = ["sandstone_blocks", "mud_brick", "clay_plaster", "whitewash", "timber_planks", "stone_foundation", "wood_beams", "roof_tiles"];
-const FRONTS = ["house_small", "house_large", "tavern", "general_store", "alchemist", "blacksmith", "temple", "gate"];
+const WALLS = ["sandstone_blocks", "mud_brick", "clay_plaster", "whitewash", "white_marble", "timber_planks", "stone_foundation", "wood_beams", "roof_tiles"];
+const FRONTS = ["house_small", "house_large", "tavern", "tent_tavern", "general_store", "alchemist", "blacksmith", "temple", "gate", "gate_mud"];
 const NPCS = ["", "barkeep", "patron", "merchant", "townsperson", "guard", "market_porter", "market_woman", "market_catfolk", "market_oldman"];
-// char, label, colour
+// the game's factions (game/scripts/balance.gd FACTIONS): id, name, attitude at the start
+const FACTIONS = [["", "(none)", ""], ["arcane_empire", "Arcane Empire", "neutral"], ["clan_1", "Clan Dhuhan", "neutral"], ["clan_2", "Clan Zahra", "neutral"],
+  ["clan_3", "House Attabi", "neutral"], ["clan_4", "Rawi Caravan", "neutral"], ["clan_5", "Sidra Caravan", "neutral"], ["clan_6", "House Jazari", "neutral"],
+  ["sentinels", "The Sentinels", "neutral"], ["plague_knights", "The Plague Knights", "neutral"], ["void_cultists", "Void Cultists", "neutral"],
+  ["serpentine_empire", "Serpentine Empire", "hostile"], ["undead", "Undead", "hostile"], ["adventurers_guild", "The Adventurer's Guild", "neutral"],
+  ["bandits", "Bandits", "hostile"]];
+// building letters (game/scripts/map_loader.gd FRONT_LETTERS)
+const FRONT_LETTERS = {t: "tavern", g: "general_store", h: "house_small", j: "house_large", k: "blacksmith", m: "temple", y: "alchemist", o: "gate"};
+const OPEN_FLOORS = [",", "=", ":"];
+// char, label, colour, group, modes (m = dungeon/area, s = settlement, b = base)
 const TOOLS = [
-  ["#", "Wall", "#8a6a44"], [".", "Floor", "#3a3027"], [",", "Outdoor ground", "#b9945a"], [" ", "Nothing (solid)", "#050403"],
-  ["D", "Door", "#a0602a"], ["+", "Locked door", "#5a2a14"], ["S", "Start (faces north)", "#2f9e5b"], ["E", "Club man (enemy)", "#c43a2c"],
-  ["C", "Chest", "#d8a23a"], ["B", "Barrel", "#7c4e24"], ["T", "Table", "#9a7348"], ["L", "Lamp (lit)", "#f4c95d"], ["l", "Lamp (unlit)", "#7a6630"], ["M", "Magical darkness", "#000000"],
-  ["W", "Water", "#2f6f9a"], ["X", "Exit to map", "#e2ac3e"], ["^", "Stairs", "#8a8a9a"], ["H", "Building front", "#c87f4a"], ["Q", "Lever (opens nearest gate)", "#b03a2a"], ["G", "Gate (bars)", "#5c5c66"], ["R", "Raised floor", "#6e5a40"], ["U", "Lift (next to raised floor)", "#c0a060"], ["K", "Key (opens the locked doors +)", "#c9a23a"], ["P", "Pressure plate (opens nearest gate)", "#7a7266"], ["b", "Bed (E sleeps: full heal)", "#8a5a8a"], ["c", "Crate (3D box)", "#b8864a"], ["w", "Well (3D)", "#7a8a9a"], ["s", "Market stall (3D, opens south)", "#b33a2e"], ["a", "Bar counter (3D, front south)", "#6a4a2a"],
-  ["1", "NPC 1", "#6b5bb8"], ["2", "NPC 2", "#6b5bb8"], ["3", "NPC 3", "#6b5bb8"], ["4", "NPC 4", "#6b5bb8"],
-  ["5", "NPC 5", "#6b5bb8"], ["6", "NPC 6", "#6b5bb8"], ["7", "NPC 7", "#6b5bb8"], ["8", "NPC 8", "#6b5bb8"], ["9", "NPC 9", "#6b5bb8"],
+  [".", "Floor / ground", "#3a3027", "Ground", "msb"], [",", "Outdoor ground", "#b9945a", "Ground", "msb"],
+  ["=", "Road", "#8c7a5e", "Ground", "sb"], [":", "Plaza / square", "#a89a80", "Ground", "sb"],
+  ["W", "Water", "#2f6f9a", "Ground", "msb"], [" ", "Nothing (solid)", "#050403", "Ground", "m"], ["M", "Magical darkness", "#000000", "Ground", "m"],
+  ["#", "Wall", "#8a6a44", "Walls and doors", "msb"], ["%", "City wall (tall)", "#c9b58e", "Walls and doors", "sb"], ["|", "Palisade (wood)", "#6b4a2a", "Walls and doors", "sb"],
+  ["D", "Door", "#a0602a", "Walls and doors", "msb"], ["+", "Locked door", "#5a2a14", "Walls and doors", "msb"], ["G", "Gate (bars)", "#5c5c66", "Walls and doors", "msb"],
+  ["t", "Tavern", "#c0622f", "Buildings", "sb"], ["g", "General store", "#3f7f6a", "Buildings", "sb"], ["h", "Small house", "#c8a070", "Buildings", "sb"],
+  ["j", "Large house", "#a07850", "Buildings", "sb"], ["k", "Blacksmith", "#5a5a64", "Buildings", "sb"], ["m", "Temple", "#e0d0a0", "Buildings", "sb"],
+  ["y", "Alchemist", "#7a4a9a", "Buildings", "sb"], ["o", "City gate (in the wall)", "#d8a23a", "Buildings", "sb"], ["H", "Building front (picture above)", "#c87f4a", "Buildings", "m"],
+  ["n", "Tent (3D, door south)", "#e8d8b0", "Buildings", "msb"],
+  ["S", "Start (faces north)", "#2f9e5b", "People", "msb"], ["E", "Club man (enemy)", "#c43a2c", "People", "msb"],
+  ["1", "NPC 1", "#6b5bb8", "People", "msb"], ["2", "NPC 2", "#6b5bb8", "People", "msb"], ["3", "NPC 3", "#6b5bb8", "People", "msb"],
+  ["4", "NPC 4", "#6b5bb8", "People", "msb"], ["5", "NPC 5", "#6b5bb8", "People", "msb"], ["6", "NPC 6", "#6b5bb8", "People", "msb"],
+  ["7", "NPC 7", "#6b5bb8", "People", "msb"], ["8", "NPC 8", "#6b5bb8", "People", "msb"], ["9", "NPC 9", "#6b5bb8", "People", "msb"],
+  ["s", "Market stall (3D, opens south)", "#b33a2e", "Things", "msb"], ["w", "Well (3D)", "#7a8a9a", "Things", "msb"], ["f", "Campfire (lit)", "#ff8a2a", "Things", "msb"],
+  ["C", "Chest", "#d8a23a", "Things", "msb"], ["B", "Barrel", "#7c4e24", "Things", "msb"], ["c", "Crate (3D box)", "#b8864a", "Things", "msb"],
+  ["T", "Table", "#9a7348", "Things", "msb"], ["b", "Bed (E sleeps: full heal)", "#8a5a8a", "Things", "msb"], ["a", "Bar counter (3D, front south)", "#6a4a2a", "Things", "msb"],
+  ["K", "Key (opens the locked doors +)", "#c9a23a", "Things", "msb"],
+  ["L", "Lamp (lit)", "#f4c95d", "Light", "msb"], ["l", "Lamp (unlit)", "#7a6630", "Light", "msb"],
+  ["X", "Exit to map", "#e2ac3e", "Travel", "msb"], ["^", "Stairs", "#8a8a9a", "Travel", "msb"],
+  ["Q", "Lever (opens nearest gate)", "#b03a2a", "Mechanisms", "mb"], ["P", "Pressure plate (opens nearest gate)", "#7a7266", "Mechanisms", "mb"],
+  ["R", "Raised floor (walkway, tower top)", "#6e5a40", "Mechanisms", "mb"], ["U", "Lift (next to raised floor)", "#c0a060", "Mechanisms", "mb"],
 ];
 const COL = Object.fromEntries(TOOLS.map(t => [t[0], t[2]]));
-const SAMPLE = `name: Test Dungeon
+const LABEL = Object.fromEntries(TOOLS.map(t => [t[0], t[1]]));
+const MODES = {
+  map: {key: "m", sub: "Paint a dungeon or an outdoor area square by square (one square = 2 metres in game), then play it in the browser build or copy the text into <code>game/data/maps/&lt;name&gt;.txt</code>."},
+  settlement: {key: "s", sub: "Plan a village, town or city: paint roads, plazas and the city wall, then blocks of building letters. Every block becomes one building whose front faces the road. Play it straight away, or save the text into <code>game/data/maps/</code>."},
+  base: {key: "b", sub: "Plan a faction base or a camp: a palisade or walls, tents, campfires, guards and loot. The attitude decides whether it is peaceful and whether you may rest there. Play it straight away, or save the text into <code>game/data/maps/</code>."},
+};
+const SAMPLES = {map: `name: Test Dungeon
 type: dungeon
 ground: flagstone
 wall: sandstone_blocks
@@ -186,38 +274,164 @@ X: test_area
 ###########D#######
           #.#
           #X#
-          ###`;
+          ###`, settlement: `name: Planner Town
+planner: settlement
+settlement: town
+type: area
+ground: sand
+outdoor: sand
+wall: mud_brick
+road: dirt_road
+plaza: cobblestone
+citywall: sandstone_blocks
+citywall_h: 7
+faction: arcane_empire
+N1: guard
+N2: merchant
+N3: townsperson
+N4: market_woman
+X: test_area
+---
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%,,,,,,,,,,,,,,,ttt===kkk,,,,,,,,,,,,,,,%
+%,,,,,,,,,,,,,,,ttt===kkk,,,,,,,,,,,,,,,%
+%,,,,,,,,,,,,,,,ttt===kkk,,,,,,,,,,,,,,,%
+%,,,,,,,,,,,,,,,ttt===kkk,,,,,,,,,,,,,,,%
+%,,,,,,,,,,,,,,,tttL=Lkkk,,,,,,,,,,,,,,,%
+%,,,,,,,,,,,,,,,hhh===yyy,,,,,,,,,,,,,,,%
+%,,,,,,,,,,,,,,,hhh===yyy,,,,,,,,,,,,,,,%
+%,,,,,,,,,,,,,,,hhh=3=yyy,,,,,,,,,,,,,,,%
+%,,,,,,,,,,,,,,,,,,===,,,,,,,,,,,,,,,,,,%
+%,,,,,,,,,,,,,:::::::::::::mmmmmmm,,,,,,%
+%,,ggggggjjjj,:s:s:::::s:s:mmmmmmmhhhh,,%
+%,,ggggggjjjj,:::::::::::::mmmmmmmhhhh,,%
+%,,ggggggjjjjL::2:::::::4::mmmmmmmhhhh,,%
+%=============:::::::::::::=============%
+%===========3=::::::w::::::===3=========%
+%=============:::::::::::::L============%
+%,,jjjjj,hhhh,:::::::::::::hhhh,hhhh,,,,%
+%,,jjjjj,hhhh,:::::::::::::hhhh,hhhh,,,,%
+%,,jjjjj,hhhh,:::::::::::::hhhh,hhhh,,,,%
+%,,,,,,,,,,,,,::::L:::L::::,,,,,,,,,,,,,%
+%,,,,,,,,,,,,,,,hhh===hhh,,,,,,,,,,,,,,,%
+%,,,,,,,,,,,,,,,hhh===hhh,,,,,,,,,,,,,,,%
+%,,,,,,,,,,,,,,,hhh===hhh,,,,,,,,,,,,,,,%
+%,,,,,,,,,,,,,,,hhh===hhh,,,,,,,,,,,,,,,%
+%,,,,,,,,,,,,,,,ggg===jjj,,,,,,,,,,,,,,,%
+%,,,,,,,,,,,,,,,ggg===jjj,,,,,,,,,,,,,,,%
+%,,,,,,,,,,,,,,,ggg=S=jjj,,,,,,,,,,,,,,,%
+%,,,,,,,,,,,,,,,gg1===1jj,,,,,,,,,,,,,,,%
+%,,,,,,,,,,,,,,,,,,=X=,,,,,,,,,,,,,,,,,,%
+%%%%%%%%%%%%%%%%%%%ooo%%%%%%%%%%%%%%%%%%%`, base: `name: Bandit Camp
+planner: base
+base: camp
+type: area
+ground: dry_mud
+outdoor: sand
+palisade: timber_planks
+place: faction_base
+faction: bandits
+camp: hostile
+aware: no
+---
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,|||||||||||||||||||||||||,,,,
+,,,,|.......................|,,,,
+,,,,|.b.....................|,,,,
+,,,,|...n...n........n...n..|,,,,
+,,,,|...........C...........|,,,,
+,,,,|.......................|,,,,
+,,,,|.......................|,,,,
+,,,,|.........E.............|,,,,
+,,,,|...n.......f........n..|,,,,
+,,,,|.............E.........|,,,,
+,,,,|.......................|,,,,
+,,,,|.....E.............RRR.|,,,,
+,,,,|....f.............ERRR.|,,,,
+,,,,|...................RRR.|,,,,
+,,,,|.BB.................Uc.|,,,,
+,,,,|.......................|,,,,
+,,,,|||||||||||...|||||||||||,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,S,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,
+,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,`};
 
 const $ = id => document.getElementById(id);
-let grid = [], W = 19, H = 15, tool = "#", painting = null;
+let grid = [], W = 19, H = 15, tool = "#", painting = null, mode = "map", shape = "brush", dragFrom = null, dragBase = null;
+const undo = [];
 
 function fillSelect(id, list, val) {
-  const s = $(id); s.innerHTML = list.map(v => `<option>${v}</option>`).join(""); if (val) s.value = val;
+  const s = $(id); s.innerHTML = list.map(v => Array.isArray(v) ? `<option value="${v[0]}">${v[1]}</option>` : `<option>${v}</option>`).join(""); if (val !== undefined) s.value = val;
 }
 fillSelect("f-ground", GROUND, "flagstone"); fillSelect("f-wall", WALLS, "sandstone_blocks");
 fillSelect("f-ceiling", ["wood_beams", "sandstone_blocks", "timber_planks", "stone_foundation"], "wood_beams");
 fillSelect("f-outdoor", GROUND, "sand"); fillSelect("f-H", FRONTS, "house_small");
+fillSelect("f-road", GROUND, "dirt_road"); fillSelect("f-plaza", GROUND, "cobblestone");
+fillSelect("f-citywall", WALLS, "sandstone_blocks"); fillSelect("f-palisade", WALLS, "timber_planks");
+fillSelect("f-faction", FACTIONS.map(f => [f[0], f[1]]), "");
 $("npc-fields").innerHTML = Array.from({length: 9}, (_, i) =>
   `<label>NPC ${i + 1}<select id="f-N${i + 1}">${NPCS.map(n => `<option value="${n}">${n || "(none)"}</option>`).join("")}</select></label>`).join("");
+$("front-fields").innerHTML = Object.entries(FRONT_LETTERS).map(([c, def]) =>
+  `<label>${c}: ${LABEL[c]}<select id="f-front-${c}">${FRONTS.map(p => `<option${p === def ? " selected" : ""}>${p}</option>`).join("")}</select></label>`).join("");
 
-$("tools").innerHTML = TOOLS.map(([c, l, col]) =>
-  `<button class="tool" type="button" data-c="${c === " " ? "space" : c}" aria-pressed="${c === tool}"><span class="sw" style="background:${col}">${c === " " ? "" : c}</span><span>${l}</span></button>`).join("");
+function drawTools() {
+  const key = MODES[mode].key; let html = "", last = "";
+  for (const [c, l, col, grp, ms] of TOOLS) {
+    if (!ms.includes(key)) continue;
+    if (grp !== last) { html += `<div class="group-h">${grp}</div>`; last = grp; }
+    html += `<button class="tool" type="button" data-c="${c === " " ? "space" : c}" aria-pressed="${c === tool}"><span class="sw" style="background:${col}">${c === " " ? "" : c}</span><span>${l}</span></button>`;
+  }
+  $("tools").innerHTML = html;
+  $("legend").innerHTML = TOOLS.filter(t => t[4].includes(key) && !"23456789".includes(t[0])).map(([c, l]) =>
+    `<div><code>${c === " " ? "space" : c}</code> ${l}${c === "1" ? " (1 to 9, set in NPCs)" : ""}</div>`).join("");
+}
 $("tools").addEventListener("click", e => {
   const b = e.target.closest(".tool"); if (!b) return;
   tool = b.dataset.c === "space" ? " " : b.dataset.c;
   document.querySelectorAll(".tool").forEach(t => t.setAttribute("aria-pressed", t === b));
 });
-$("legend").innerHTML = TOOLS.filter(t => !"23456789".includes(t[0])).map(([c, l]) =>
-  `<div><code>${c === " " ? "space" : c}</code> ${l}${c === "1" ? " (1 to 9, set in NPCs)" : ""}</div>`).join("");
+function setMode(m) {
+  mode = m;
+  document.querySelectorAll(".modes button").forEach(b => b.setAttribute("aria-pressed", b.dataset.mode === m));
+  document.querySelectorAll("[data-modes]").forEach(el => el.classList.toggle("show", el.dataset.modes.split(" ").includes(m)));
+  $("sub").innerHTML = MODES[m].sub;
+  if (!TOOLS.some(t => t[0] === tool && t[4].includes(MODES[m].key))) tool = "#";
+  drawTools();
+}
+document.querySelector(".modes").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b || b.dataset.mode === mode) return;
+  setMode(b.dataset.mode); render(); update();
+});
+function setShape(s) { shape = s; document.querySelectorAll(".shapes [data-shape]").forEach(b => b.setAttribute("aria-pressed", b.dataset.shape === s)); }
+document.querySelector(".shapes").addEventListener("click", e => { const b = e.target.closest("[data-shape]"); if (b) setShape(b.dataset.shape); });
 
 function blank(w, h, fill) { return Array.from({length: h}, () => Array(w).fill(fill)); }
+function emptyCell() { return $("f-type").value === "area" ? "," : "."; }
+function rect(ch, x0, y0, w, h) { for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) if (grid[y] && x >= 0 && x < W) grid[y][x] = ch; }
 function newMap(type) {
   W = +$("f-w").value || 19; H = +$("f-h").value || 15;
   grid = blank(W, H, type === "area" ? "," : ".");
   wallEdges(); grid[H - 2][Math.floor(W / 2)] = "S";
   $("f-type").value = type; $("f-name").value = type === "area" ? "New Area" : "New Dungeon"; render(); update();
 }
-function wallEdges() { for (let x = 0; x < W; x++) { grid[0][x] = "#"; grid[H - 1][x] = "#"; } for (let y = 0; y < H; y++) { grid[y][0] = "#"; grid[y][W - 1] = "#"; } }
+function newSettlement() {
+  W = 41; H = 31; grid = blank(W, H, ","); $("f-type").value = "area"; $("f-name").value = "New Town";
+  rect("%", 0, 0, W, 1); rect("%", 0, H - 1, W, 1); rect("%", 0, 0, 1, H); rect("%", W - 1, 0, 1, H);
+  rect("=", 19, 1, 3, H - 2); rect("=", 1, 14, W - 2, 3); rect(":", 15, 11, 11, 9);
+  rect("o", 19, H - 1, 3, 1); grid[H - 2][20] = "X"; grid[H - 4][20] = "S";
+  $("f-faction").value = "arcane_empire"; $("f-w").value = W; $("f-h").value = H; render(); update();
+}
+function newBase() {
+  W = 33; H = 25; grid = blank(W, H, ","); $("f-type").value = "area"; $("f-name").value = "New Camp";
+  rect(".", 5, 4, 23, 15); rect("|", 4, 3, 25, 1); rect("|", 4, 19, 25, 1); rect("|", 4, 3, 1, 17); rect("|", 28, 3, 1, 17);
+  rect(".", 15, 19, 3, 1); grid[11][16] = "f"; grid[22][16] = "S";
+  $("f-ground").value = "dry_mud"; $("f-w").value = W; $("f-h").value = H; render(); update();
+}
+function wallEdges() { const c = mode === "settlement" ? "%" : mode === "base" ? "|" : "#"; for (let x = 0; x < W; x++) { grid[0][x] = c; grid[H - 1][x] = c; } for (let y = 0; y < H; y++) { grid[y][0] = c; grid[y][W - 1] = c; } }
 
 function parse(text) {
   const lines = text.replace(/\r/g, "").split("\n"); const hd = {}; const rows = []; let inGrid = false;
@@ -228,30 +442,76 @@ function parse(text) {
   while (rows.length && !rows[rows.length - 1].trim()) rows.pop();
   return {hd, rows};
 }
+const HEADER_FIELDS = [["ground", "f-ground"], ["wall", "f-wall"], ["ceiling", "f-ceiling"], ["outdoor", "f-outdoor"], ["H", "f-H"],
+  ["settlement", "f-settlement"], ["base", "f-base"], ["faction", "f-faction"], ["camp", "f-camp"], ["road", "f-road"], ["plaza", "f-plaza"],
+  ["citywall", "f-citywall"], ["citywall_h", "f-citywall_h"], ["palisade", "f-palisade"]];
 function loadText(text) {
   const {hd, rows} = parse(text);
   if (!rows.length) { setStatus("No map grid found: the text needs a line with --- and the rows under it.", true); return; }
   H = rows.length; W = Math.max(...rows.map(r => r.length));
   grid = rows.map(r => Array.from({length: W}, (_, x) => r[x] ?? " "));
   $("f-w").value = W; $("f-h").value = H;
+  setMode(hd.planner === "settlement" ? "settlement" : hd.planner === "base" ? "base" : "map");
   $("f-name").value = hd.name || "Untitled"; $("f-type").value = hd.type === "area" ? "area" : "dungeon";
-  for (const [k, id] of [["ground", "f-ground"], ["wall", "f-wall"], ["ceiling", "f-ceiling"], ["outdoor", "f-outdoor"], ["H", "f-H"]]) if (hd[k]) $(id).value = hd[k];
+  for (const [k, id] of HEADER_FIELDS) if (hd[k]) $(id).value = hd[k];
+  for (const [c, def] of Object.entries(FRONT_LETTERS)) $("f-front-" + c).value = def;
+  for (const part of (hd.fronts || "").replace(/,/g, " ").split(" ")) { const kv = part.split("="); if (kv.length === 2 && FRONT_LETTERS[kv[0]]) $("f-front-" + kv[0]).value = kv[1]; }
   $("f-X").value = hd.X || ""; $("f-up").value = hd["^"] || "";
   $("f-dark").value = hd.darkness === "magic" ? "magic" : ""; $("f-aware").value = hd.aware === "yes" ? "yes" : "no";
   for (let i = 1; i <= 9; i++) $("f-N" + i).value = hd["N" + i] || "";
-  render(); update();
+  undo.length = 0; render(); update();
 }
+function has(ch) { return grid.some(r => r.includes(ch)); }
 function toText() {
-  const hd = [`name: ${$("f-name").value}`, `type: ${$("f-type").value}`, `ground: ${$("f-ground").value}`, `wall: ${$("f-wall").value}`];
+  const hd = [`name: ${$("f-name").value}`];
+  if (mode !== "map") hd.push(`planner: ${mode}`);
+  if (mode === "settlement") hd.push(`settlement: ${$("f-settlement").value}`);
+  if (mode === "base") hd.push(`base: ${$("f-base").value}`);
+  hd.push(`type: ${$("f-type").value}`, `ground: ${$("f-ground").value}`, `wall: ${$("f-wall").value}`);
   if ($("f-type").value === "dungeon") hd.push(`ceiling: ${$("f-ceiling").value}`);
-  if (grid.some(r => r.includes(","))) hd.push(`outdoor: ${$("f-outdoor").value}`);
-  if (grid.some(r => r.includes("H"))) hd.push(`H: ${$("f-H").value}`);
+  if (has(",")) hd.push(`outdoor: ${$("f-outdoor").value}`);
+  if (has("H")) hd.push(`H: ${$("f-H").value}`);
+  if (has("=")) hd.push(`road: ${$("f-road").value}`);
+  if (has(":")) hd.push(`plaza: ${$("f-plaza").value}`);
+  if (has("%")) hd.push(`citywall: ${$("f-citywall").value}`, `citywall_h: ${$("f-citywall_h").value}`);
+  if (has("|")) hd.push(`palisade: ${$("f-palisade").value}`);
+  const changed = Object.entries(FRONT_LETTERS).filter(([c, def]) => has(c) && $("f-front-" + c).value !== def).map(([c]) => `${c}=${$("f-front-" + c).value}`);
+  if (changed.length) hd.push(`fronts: ${changed.join(" ")}`);
+  if (mode === "base") hd.push(`place: faction_base`, `camp: ${$("f-camp").value}`);
+  if (mode !== "map" && $("f-faction").value) hd.push(`faction: ${$("f-faction").value}`);
   for (let i = 1; i <= 9; i++) { const v = $("f-N" + i).value; if (v) hd.push(`N${i}: ${v}`); }
   if ($("f-X").value) hd.push(`X: ${$("f-X").value}`);
   if ($("f-up").value) hd.push(`^: ${$("f-up").value}`);
-  if ($("f-dark").value) hd.push(`darkness: ${$("f-dark").value}`);
+  if (mode === "map" && $("f-dark").value) hd.push(`darkness: ${$("f-dark").value}`);
   if ($("f-aware").value === "yes") hd.push(`aware: yes`);
   return hd.join("\n") + "\n---\n" + grid.map(r => r.join("").replace(/\s+$/, "")).join("\n") + "\n";
+}
+
+// ---- buildings: the same rule as the game (MapLoader._fronts): one block of one letter = one building, front on the side
+// with the most open squares next to it (roads and plazas count double; ties: south, north, east, west)
+const isFront = c => c === "H" || c in FRONT_LETTERS;
+const isSolid = c => c === "#" || c === " " || c === "%" || c === "|" || isFront(c);
+const at = (x, y) => (y >= 0 && y < H && x >= 0 && x < W) ? grid[y][x] : " ";
+const pull = c => (c === "=" || c === ":") ? 2 : (isSolid(c) ? 0 : 1);
+function buildings() {
+  const seen = new Set(), out = [];
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const c = grid[y][x]; if (!isFront(c) || seen.has(y * W + x)) continue;
+    let x0 = x, x1 = x, y0 = y, y1 = y; const todo = [[x, y]]; seen.add(y * W + x);
+    while (todo.length) {
+      const [px, py] = todo.pop(); x0 = Math.min(x0, px); x1 = Math.max(x1, px); y0 = Math.min(y0, py); y1 = Math.max(y1, py);
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const qx = px + dx, qy = py + dy;
+        if (at(qx, qy) === c && !seen.has(qy * W + qx)) { seen.add(qy * W + qx); todo.push([qx, qy]); }
+      }
+    }
+    const cnt = [0, 0, 0, 0];
+    for (let i = x0; i <= x1; i++) { cnt[0] += pull(at(i, y1 + 1)); cnt[1] += pull(at(i, y0 - 1)); }
+    for (let j = y0; j <= y1; j++) { cnt[2] += pull(at(x1 + 1, j)); cnt[3] += pull(at(x0 - 1, j)); }
+    let side = 0; for (let i = 1; i < 4; i++) if (cnt[i] > cnt[side]) side = i;
+    out.push({c, x0, y0, x1, y1, side, open: cnt[side]});
+  }
+  return out;
 }
 
 const cv = $("cv"), ctx = cv.getContext("2d");
@@ -261,23 +521,70 @@ function render() {
   ctx.font = `600 ${Math.round(c * 0.55)}px "IBM Plex Mono", monospace`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
     const ch = grid[y][x]; ctx.fillStyle = COL[ch] || "#3a3027"; ctx.fillRect(x * c, y * c, c, c);
-    if (!"#., ".includes(ch)) { ctx.fillStyle = "#fff"; ctx.fillText(ch, x * c + c / 2, y * c + c / 2 + 1); }
+    if (!"#., =:%|".includes(ch) && !isFront(ch) && c >= 12) { ctx.fillStyle = "#fff"; ctx.fillText(ch, x * c + c / 2, y * c + c / 2 + 1); }
     ctx.strokeStyle = "rgba(255,255,255,0.07)"; ctx.strokeRect(x * c + 0.5, y * c + 0.5, c - 1, c - 1);
   }
+  for (const b of buildings()) {   // outline each building, its letter in the middle, a gold edge on the front side
+    const X0 = b.x0 * c, Y0 = b.y0 * c, X1 = (b.x1 + 1) * c, Y1 = (b.y1 + 1) * c;
+    ctx.strokeStyle = "rgba(0,0,0,0.6)"; ctx.lineWidth = 2; ctx.strokeRect(X0 + 1, Y0 + 1, X1 - X0 - 2, Y1 - Y0 - 2);
+    ctx.strokeStyle = b.open ? "#ffd36a" : "#ff4a3a"; ctx.lineWidth = Math.max(3, c / 6); ctx.beginPath();
+    const e = ctx.lineWidth / 2;
+    if (b.side === 0) { ctx.moveTo(X0, Y1 - e); ctx.lineTo(X1, Y1 - e); } else if (b.side === 1) { ctx.moveTo(X0, Y0 + e); ctx.lineTo(X1, Y0 + e); }
+    else if (b.side === 2) { ctx.moveTo(X1 - e, Y0); ctx.lineTo(X1 - e, Y1); } else { ctx.moveTo(X0 + e, Y0); ctx.lineTo(X0 + e, Y1); }
+    ctx.stroke(); ctx.lineWidth = 1;
+    ctx.fillStyle = "#fff"; ctx.fillText(b.c, (X0 + X1) / 2, (Y0 + Y1) / 2 + 1);
+  }
+  if (dragFrom && dragFrom.to) {   // rectangle preview
+    const [ax, ay] = dragFrom.at, [bx, by] = dragFrom.to;
+    ctx.strokeStyle = "#ffd36a"; ctx.setLineDash([4, 3]); ctx.lineWidth = 2;
+    ctx.strokeRect(Math.min(ax, bx) * c + 1, Math.min(ay, by) * c + 1, (Math.abs(ax - bx) + 1) * c - 2, (Math.abs(ay - by) + 1) * c - 2);
+    ctx.setLineDash([]); ctx.lineWidth = 1;
+  }
 }
-function paintAt(ev) {
+function cellAt(ev) {
   const r = cv.getBoundingClientRect(), c = cell();
   const x = Math.floor((ev.clientX - r.left) / c), y = Math.floor((ev.clientY - r.top) / c);
-  if (x < 0 || y < 0 || x >= W || y >= H) return;
-  const t = painting === "erase" ? ($("f-type").value === "area" ? "," : ".") : tool;
-  if (t === "S") for (const row of grid) for (let i = 0; i < row.length; i++) if (row[i] === "S") row[i] = ".";
-  if (grid[y][x] !== t) { grid[y][x] = t; render(); update(); }
+  return (x < 0 || y < 0 || x >= W || y >= H) ? null : [x, y];
 }
-cv.addEventListener("pointerdown", e => { painting = e.button === 2 ? "erase" : "paint"; cv.setPointerCapture(e.pointerId); paintAt(e); });
-cv.addEventListener("pointermove", e => { if (painting) paintAt(e); });
-cv.addEventListener("pointerup", () => painting = null);
+function put(x, y, t) {
+  if (t === "S") for (const row of grid) for (let i = 0; i < row.length; i++) if (row[i] === "S") row[i] = emptyCell();
+  grid[y][x] = t;
+}
+function snapshot() { undo.push(grid.map(r => r.slice())); if (undo.length > 60) undo.shift(); }
+function paintTool() { return painting === "erase" ? emptyCell() : tool; }
+function floodFill(x, y, t) {
+  const from = grid[y][x]; if (from === t) return;
+  const todo = [[x, y]];
+  while (todo.length) {
+    const [px, py] = todo.pop(); if (at(px, py) !== from) continue;
+    grid[py][px] = t; todo.push([px + 1, py], [px - 1, py], [px, py + 1], [px, py - 1]);
+  }
+}
+function applyRect(a, b, outline) {
+  const t = paintTool(), x0 = Math.min(a[0], b[0]), x1 = Math.max(a[0], b[0]), y0 = Math.min(a[1], b[1]), y1 = Math.max(a[1], b[1]);
+  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (!outline || x === x0 || x === x1 || y === y0 || y === y1) put(x, y, t);
+}
+cv.addEventListener("pointerdown", e => {
+  const p = cellAt(e); if (!p) return;
+  painting = e.button === 2 ? "erase" : "paint"; cv.setPointerCapture(e.pointerId); snapshot();
+  if (shape === "fill") { floodFill(p[0], p[1], paintTool()); painting = null; render(); update(); return; }
+  if (shape === "rect" || shape === "outline") { dragFrom = {at: p, to: p}; render(); return; }
+  put(p[0], p[1], paintTool()); render(); update();
+});
+cv.addEventListener("pointermove", e => {
+  if (!painting) return; const p = cellAt(e); if (!p) return;
+  if (dragFrom) { if (dragFrom.to[0] !== p[0] || dragFrom.to[1] !== p[1]) { dragFrom.to = p; render(); } return; }
+  if (grid[p[1]][p[0]] !== paintTool()) { put(p[0], p[1], paintTool()); render(); update(); }
+});
+cv.addEventListener("pointerup", () => {
+  if (dragFrom) { applyRect(dragFrom.at, dragFrom.to, shape === "outline"); dragFrom = null; render(); update(); }
+  painting = null;
+});
 cv.addEventListener("contextmenu", e => e.preventDefault());
 $("f-zoom").addEventListener("input", render);
+function doUndo() { const g = undo.pop(); if (!g) return; grid = g; H = grid.length; W = grid[0].length; $("f-w").value = W; $("f-h").value = H; render(); update(); }
+$("btn-undo").addEventListener("click", doUndo);
+document.addEventListener("keydown", e => { if ((e.ctrlKey || e.metaKey) && e.key === "z" && document.activeElement.tagName !== "TEXTAREA" && document.activeElement.tagName !== "INPUT") { e.preventDefault(); doUndo(); } });
 
 function setStatus(t, bad) { $("status").textContent = t; $("status").classList.toggle("warn", !!bad); }
 function check() {
@@ -289,6 +596,34 @@ function check() {
   for (let i = 1; i <= 9; i++) if (flat.includes(String(i)) && !$("f-N" + i).value) issues.push(`NPC ${i} is on the map but has no NPC chosen.`);
   const enemies = flat.filter(c => c === "E").length;
   setStatus(issues.length ? issues.join(" ") : `${W} x ${H} squares (${W * 2} x ${H * 2} m), ${enemies} enem${enemies === 1 ? "y" : "ies"}, ready to play.`, issues.length > 0);
+  if (mode !== "map") plan(flat);
+}
+function plan(flat) {
+  const bs = buildings(), count = {}, warns = [];
+  for (const b of bs) count[b.c] = (count[b.c] || 0) + 1;
+  const n = ch => flat.filter(c => c === ch).length;
+  const rows = [];
+  for (const c of Object.keys(FRONT_LETTERS)) if (count[c]) rows.push([`${LABEL[c]} (${$("f-front-" + c).value})`, count[c]]);
+  if (n("n")) rows.push(["Tents", n("n")]);
+  if (n("s")) rows.push(["Market stalls", n("s")]);
+  if (n("w")) rows.push(["Wells", n("w")]);
+  if (n("f")) rows.push(["Campfires", n("f")]);
+  const npcs = flat.filter(c => c >= "1" && c <= "9").length;
+  rows.push(["People (NPCs)", npcs], ["Enemies", n("E")], ["Chests", n("C")]);
+  for (const b of bs) if (!b.open) warns.push(`The ${LABEL[b.c].toLowerCase()} at ${b.x0},${b.y0} has no open side: its front would face a wall (red edge).`);
+  if (n("%") && !count.o && !n("X")) warns.push("The city wall has no gate (o) and no exit (X).");
+  if (mode === "settlement" && !count.t) warns.push("No tavern (t) yet.");
+  const fac = FACTIONS.find(f => f[0] === $("f-faction").value) || FACTIONS[0];
+  let peace = "";
+  if (mode === "base") {
+    const att = $("f-camp").value, hostileFac = fac[2] === "hostile";
+    const rest = (att === "friendly" || att === "neutral") && !hostileFac;
+    peace = `${rest ? "Peaceful" : "Not peaceful"}: ${rest ? "you arrive with your weapon put away and may rest here (R)." : "no resting here; enemies here fight you."}`;
+    if (att !== "hostile" && hostileFac) warns.push(`${fac[1]} start hostile to the player, so this camp is not peaceful whatever its attitude.`);
+    if (att === "hostile" && !n("E")) warns.push("A hostile camp with no enemies (E).");
+  } else peace = `Controlled by: ${fac[1]}${fac[0] ? " (its guards keep the law here)" : ""}.`;
+  $("plan").innerHTML = `<table>${rows.map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join("")}</table>` +
+    `<div class="ok">${peace}</div>` + warns.map(w => `<div class="warn">${w}</div>`).join("");
 }
 let linkTimer = 0;
 function update() {
@@ -307,18 +642,23 @@ async function makeLink() {
   data = data.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
   $("play").href = `${GAME}?room=map&data=${data}`;
 }
-for (const id of ["f-name", "f-type", "f-ground", "f-wall", "f-ceiling", "f-outdoor", "f-H", "f-X", "f-up", ...Array.from({length: 9}, (_, i) => "f-N" + (i + 1))])
-  $(id).addEventListener("input", update);
+for (const id of ["f-name", "f-type", "f-ground", "f-wall", "f-ceiling", "f-outdoor", "f-H", "f-X", "f-up", "f-dark", "f-aware", "f-settlement", "f-base",
+  "f-faction", "f-camp", "f-road", "f-plaza", "f-citywall", "f-citywall_h", "f-palisade",
+  ...Object.keys(FRONT_LETTERS).map(c => "f-front-" + c), ...Array.from({length: 9}, (_, i) => "f-N" + (i + 1))])
+  $(id).addEventListener("input", () => { if (id.startsWith("f-front-")) render(); update(); });
 $("btn-resize").addEventListener("click", () => {
-  const nw = Math.max(5, Math.min(120, +$("f-w").value || W)), nh = Math.max(5, Math.min(120, +$("f-h").value || H));
-  const fill = $("f-type").value === "area" ? "," : ".";
+  snapshot();
+  const nw = Math.max(5, Math.min(160, +$("f-w").value || W)), nh = Math.max(5, Math.min(160, +$("f-h").value || H));
+  const fill = emptyCell();
   grid = Array.from({length: nh}, (_, y) => Array.from({length: nw}, (_, x) => (grid[y] && grid[y][x] !== undefined) ? grid[y][x] : fill));
   W = nw; H = nh; render(); update();
 });
-$("btn-border").addEventListener("click", () => { wallEdges(); render(); update(); });
-$("btn-new-dungeon").addEventListener("click", () => newMap("dungeon"));
-$("btn-new-area").addEventListener("click", () => newMap("area"));
-$("btn-sample").addEventListener("click", () => loadText(SAMPLE));
+$("btn-border").addEventListener("click", () => { snapshot(); wallEdges(); render(); update(); });
+$("btn-new-dungeon").addEventListener("click", () => { snapshot(); newMap("dungeon"); });
+$("btn-new-area").addEventListener("click", () => { snapshot(); newMap("area"); });
+$("btn-new-settlement").addEventListener("click", () => { snapshot(); newSettlement(); });
+$("btn-new-base").addEventListener("click", () => { snapshot(); newBase(); });
+$("btn-sample").addEventListener("click", () => loadText(SAMPLES[mode]));
 $("btn-load").addEventListener("click", () => loadText($("out").value));
 $("btn-copy").addEventListener("click", () => {
   const ta = $("out");
@@ -333,7 +673,9 @@ $("btn-download").addEventListener("click", () => {
     $("copy-status").textContent = `Saving ${name}.txt (if nothing downloads here, use Copy text).`;
   } catch (e) { $("copy-status").textContent = "Downloads are blocked here: use Copy text."; }
 });
-loadText(SAMPLE);
+setShape("brush");
+const startMode = (location.hash.match(/mode=(\w+)/) || [])[1];
+loadText(SAMPLES[MODES[startMode] ? startMode : "map"]);
 </script>
 
 </html>
